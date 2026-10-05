@@ -28,7 +28,7 @@ permissions:
   checks: write
   packages: write
   id-token: write
-
+ 
 # ─────────────────────────────────────────────
 # Prevent Parallel Builds
 # ─────────────────────────────────────────────
