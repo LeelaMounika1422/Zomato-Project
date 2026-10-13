@@ -1,5 +1,5 @@
 # Build and push Docker image to Azure Container Registry
-# SonarQube code analysis included
+# SonarQube analysis + Trivy security scan
 
 trigger:
 - master
@@ -13,7 +13,6 @@ variables:
   containerRegistry: 'acrproject3demo26.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-
   vmImageName: 'ubuntu-latest'
 
 stages:
@@ -56,3 +55,9 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+    - script: |
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+        trivy --version
+        trivy image --severity HIGH,CRITICAL --exit-code 0 $(containerRegistry)/$(imageRepository):$(tag)
+      displayName: Trivy Security Scan
