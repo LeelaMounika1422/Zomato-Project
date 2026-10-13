@@ -10,7 +10,7 @@ resources:
 variables:
   dockerRegistryServiceConnection: 'c56f7ef7-6fb7-4bc3-8ffd-6050fbf0f7e8'
   imageRepository: 'leelamounikazomatoproject'
-  containerRegistry: 'acrproject3demo26.azurecr.io'
+  containerRegistry: 'acproject3demo26.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
   vmImageName: 'ubuntu-latest'
