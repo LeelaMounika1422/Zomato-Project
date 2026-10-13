@@ -1,6 +1,5 @@
-# Docker
-# Build and push an image to Azure Container Registry
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# Build and push Docker image to Azure Container Registry
+# SonarQube code analysis included
 
 trigger:
 - master
@@ -9,25 +8,45 @@ resources:
 - repo: self
 
 variables:
-  # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'c56f7ef7-6fb7-4bc3-8ffd-6050fbf0f7e8'
   imageRepository: 'leelamounikazomatoproject'
-  containerRegistry: 'acproject3demo26.azurecr.io'
+  containerRegistry: 'acrproject3demo26.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
 
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
 
 stages:
 - stage: Build
   displayName: Build and push stage
+
   jobs:
   - job: Build
     displayName: Build
+
     pool:
       vmImage: $(vmImageName)
+
     steps:
+
+    - task: SonarQubePrepare@7
+      displayName: Prepare SonarQube Analysis
+      inputs:
+        SonarQube: 'sonarqube-service'
+        scannerMode: 'cli'
+        configMode: 'manual'
+        cliProjectKey: 'zomato-project'
+        cliProjectName: 'Zomato Project'
+        cliSources: '.'
+
+    - task: SonarQubeAnalyze@7
+      displayName: Run SonarQube Analysis
+
+    - task: SonarQubePublish@7
+      displayName: Publish SonarQube Quality Gate
+      inputs:
+        pollingTimeoutSec: '300'
+
     - task: Docker@2
       displayName: Build and push an image to container registry
       inputs:
