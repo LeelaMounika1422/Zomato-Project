@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        // SonarQube Scanner configured in Jenkins
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -14,12 +18,30 @@ pipeline {
                 echo 'Preparing for Jenkins CI/CD pipeline'
             }
         }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarQubeScanner'
+
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            "${scannerHome}/bin/sonar-scanner" \
+                            -Dsonar.projectKey=Zomato-Project \
+                            -Dsonar.projectName=Zomato-Project \
+                            -Dsonar.sources=.
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
         success {
             echo 'Pipeline completed successfully!'
         }
+
         failure {
             echo 'Pipeline failed. Check console output.'
         }
