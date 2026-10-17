@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        // SonarQube Scanner configured in Jenkins
-    }
-
     stages {
         stage('Checkout') {
             steps {
