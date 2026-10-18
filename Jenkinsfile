@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'mounikagarapati001/zomato_new'
+        IMAGE_NAME = 'mounikagarapati01/zomato_new'
         IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKER_CREDS = 'dockerhub-creds'
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
 
                     withSonarQubeEnv('SonarQube') {
                         sh """
-                            "\${scannerHome}/bin/sonar-scanner" \
+                            "${scannerHome}/bin/sonar-scanner" \
                             -Dsonar.projectKey=Zomato-Project \
                             -Dsonar.projectName=Zomato-Project \
                             -Dsonar.sources=.
@@ -43,49 +44,56 @@ pipeline {
             }
         }
 
-        stage('OWASP Dependency Check') {
+        stage('Dependency Check') {
             steps {
                 dependencyCheck(
-                    additionalArguments: '--scan . --format XML --disableYarnAudit --disableNodeAudit',
-                    odcInstallation: 'DP-Check'
+                    odcInstallation: 'DP-Check',
+                    additionalArguments: '--scan . --format XML --out dependency-check-report'
                 )
             }
-            post {
-                always {
-                    dependencyCheckPublisher(
-                        pattern: '**/dependency-check-report.xml'
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                '''
+            }
+        }
+
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:latest image \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 0 \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${DOCKER_CREDS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
                     )
-                }
-            }
-        }
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
 
-        stage('Trivy Filesystem Scan') {
-            steps {
-                sh 'trivy fs --scanners vuln --no-progress .'
-            }
-        }
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${IMAGE_NAME}:latest
 
-        stage('Docker Build') {
-            steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
-            }
-        }
-
-        stage('Docker Image Scan') {
-            steps {
-                sh 'trivy image --scanners vuln --no-progress ${IMAGE_NAME}:${IMAGE_TAG}'
-            }
-        }
-
-        stage('Docker Hub Push') {
-            steps {
-                withDockerRegistry(
-                    credentialsId: 'docker-password',
-                    url: 'https://index.docker.io/v1/'
-                ) {
-                    sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
-                    sh 'docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest'
-                    sh 'docker push ${IMAGE_NAME}:latest'
+                        docker logout
+                    '''
                 }
             }
         }
@@ -94,10 +102,11 @@ pipeline {
             steps {
                 sh '''
                     docker rm -f zomato-app || true
+
                     docker run -d \
-                      --name zomato-app \
-                      -p 3000:3000 \
-                      ${IMAGE_NAME}:${IMAGE_TAG}
+                    --name zomato-app \
+                    -p 3000:3000 \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
@@ -105,10 +114,15 @@ pipeline {
 
     post {
         success {
-            echo 'Zomato CI/CD pipeline completed successfully!'
+            echo 'Pipeline completed successfully!'
         }
+
         failure {
             echo 'Pipeline failed. Check console output.'
+        }
+
+        always {
+            echo 'Jenkins pipeline execution completed.'
         }
     }
 }
