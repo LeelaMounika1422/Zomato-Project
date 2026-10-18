@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'mounikagarapati01/zomato_new'
+        IMAGE_NAME = 'mounikagarapati001/zomato_new'
         IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_CREDS = 'dockerhub-creds'
     }
