@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = 'mounikagarapati001/zomato_new'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        DOCKER_CREDS = 'dockerhub-creds'
+        DOCKER_CREDS = 'dockerhub-creds-v2'
     }
 
     stages {
